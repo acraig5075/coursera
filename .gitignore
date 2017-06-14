@@ -36,6 +36,6 @@
 *.vcxproj
 *.filters
 
-/.vs
-/Debug
-/Release
+.vs/
+Debug/
+Release/

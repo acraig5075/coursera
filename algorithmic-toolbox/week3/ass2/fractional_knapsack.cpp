@@ -8,18 +8,41 @@ using std::pair;
 using std::begin;
 using std::end;
 
-double loot(int &capacity, vector<std::pair<int, int>> &items)
+struct item
+{
+	int value = 0;
+	int weight = 0;
+	double ratio = 0.0;
+
+	item(int value, int weight)
+		: value(value)
+		, weight(weight)
+		, ratio(static_cast<double>(value) / weight)
+	{}
+};
+
+double loot(int &capacity, vector<item> &items)
 {
   double value = 0.0;
 
-  items.erase(std::remove_if(begin(items), end(items), [capacity](const std::pair<int, int> &i) { return i.second > capacity; }), end(items));
+  auto itr = begin(items);
 
-  if (!items.empty())
+  while (capacity > 0 && itr != end(items))
   {
-	  auto itr = items.cbegin();
-	  value += itr->first;
-	  capacity -= itr->second;
-	  items.erase(itr);
+	  if (itr->weight <= capacity)
+	  {
+		  // found something that fits, so add to the loot
+		  value += itr->value;
+		  capacity -= itr->weight;
+	  }
+	  else
+	  {
+		  // nothing fits, so add a fraction of the most valuable
+		  value += itr->ratio * capacity;
+		  capacity = 0;
+	  }
+
+	  ++itr;
   }
 
   return value;
@@ -30,19 +53,22 @@ int main() {
   int capacity;
   std::cin >> n >> capacity;
 
-  vector<pair<int,int>> items(n);
+  vector<item> items;
+  items.reserve(n);
 
   for (int i = 0; i < n; i++) {
-    std::cin >> items[i].first >> items[i].second;
+	  {
+		  int value;
+		  int weight;
+		  std::cin >> value >> weight;
+		  items.emplace_back(item{ value, weight });
+	  }
   }
 
-  std::sort(begin(items), end(items), [](pair<int, int> a, pair<int, int> b) { return a.first > b.first; });
+  // sort items by decreasing ratio
+  std::sort(begin(items), end(items), [](const item &a, const item &b) { return a.ratio > b.ratio; });
 
-  double optimal_value = 0.0;
-  while (capacity > 0 && !items.empty())
-  {
-    optimal_value += loot(capacity, items);
-  }
+  double optimal_value = loot(capacity, items);
 
   std::cout << std::fixed << std::setprecision(4) << optimal_value << "\n";
   return 0;

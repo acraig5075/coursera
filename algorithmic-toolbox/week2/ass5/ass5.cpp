@@ -3,7 +3,8 @@
 #include <cassert>
 #include <array>
 
-std::array<short, 144> wiki = {
+std::array<short, 144> wiki =
+{
 	1, 3, 8, 6, 20, 24, 16, 12, 24, 60, 10, 24,
 	28, 48, 40, 24, 36, 24, 18, 60, 16, 30, 48, 24,
 	100, 84, 72, 48, 14, 120, 30, 48, 40, 36, 80, 24,
@@ -36,33 +37,31 @@ int64_t get_fibonacci_mod(int64_t n, int64_t m)
 	return current;
 }
 
-int64_t get_pisano(int64_t m)
+int64_t get_pisano_period(int64_t m)
 {
 	if (m <= 1)
 		return m;
 
-	int64_t previous = 0;
-	int64_t current = 1;
+	int64_t a = 0;
+	int64_t b = 1;
+	int64_t c = a + b;
 
-	for (int64_t i = 2; ; ++i)
+	for (int64_t i = 0; i < m * m; i++)
 		{
-		int64_t tmp_previous = previous;
-		previous = current;
-		current = tmp_previous + current;
+		c = (a + b) % m;
+		a = b;
+		b = c;
 
-		if (i > 2 && (previous % m == 0) && (current % m == 1))
-			return i - 1;
+		if (a == 0 && b == 1)
+			return i + 1;
 		}
 
 	return 0;
-}
+	}
 
 int64_t get_fibonacci_huge_mod(int64_t n, int64_t m)
 {
-	if (n <= 1 || m <= 2)
-		return n;
-
-	int64_t p = get_pisano(m);
+	int64_t p = get_pisano_period(m);
 
 	return get_fibonacci_mod(n % p, m);
 }
@@ -70,18 +69,18 @@ int64_t get_fibonacci_huge_mod(int64_t n, int64_t m)
 void test()
 {
 	for (size_t i = 0; i < wiki.size(); ++i)
-	{
-		if (get_pisano(i + 1) != wiki.at(i))
+		{
+		if (get_pisano_period(i + 1) != wiki.at(i))
 			int stop = 1;
-	}
+		}
 }
 
 int main()
 {
-	test();
+	//test();
 
-	//int64_t n, m;
-	//std::cin >> n >> m;
-	//std::cout << get_fibonacci_huge_mod(n, m) << '\n';
+	int64_t n, m;
+	std::cin >> n >> m;
+	std::cout << get_fibonacci_huge_mod(n, m) << '\n';
 	return 0;
 }

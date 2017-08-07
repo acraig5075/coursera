@@ -1,10 +1,13 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <queue>
+#include <functional>
 
 using std::vector;
 using std::cin;
 using std::cout;
+using std::priority_queue;
 
 class JobQueue
 {
@@ -17,7 +20,7 @@ private:
 
 	void WriteResponse() const
 	{
-		for (int i = 0; i < jobs_.size(); ++i)
+		for (size_t i = 0; i < jobs_.size(); ++i)
 			{
 			cout << assigned_workers_[i] << " " << start_times_[i] << "\n";
 			}
@@ -34,23 +37,37 @@ private:
 
 	void AssignJobs()
 	{
-		// TODO: replace this code with a faster algorithm.
-		assigned_workers_.resize(jobs_.size());
-		start_times_.resize(jobs_.size());
-		vector<long long> next_free_time(num_workers_, 0);
-		for (int i = 0; i < jobs_.size(); ++i)
+		priority_queue<long long, vector<long long>, std::greater<long long>> heap;
+		heap.push(0);
+
+		vector<long long> endTimes(num_workers_);
+
+		auto next = jobs_.begin();
+
+		while (!heap.empty() && next != jobs_.end())
+		{
+			auto now = heap.top();
+			heap.pop();
+
+			int worker = 0;
+
+			for (auto &t : endTimes)
 			{
-			int duration = jobs_[i];
-			int next_worker = 0;
-			for (int j = 0; j < num_workers_; ++j)
+				if (now == t)
 				{
-				if (next_free_time[j] < next_free_time[next_worker])
-					next_worker = j;
+					t = now + *next;
+					heap.push(t);
+					assigned_workers_.push_back(worker);
+					start_times_.push_back(now);
+					++next;
 				}
-			assigned_workers_[i] = next_worker;
-			start_times_[i] = next_free_time[next_worker];
-			next_free_time[next_worker] += duration;
+
+				++worker;
+
+				if (next == jobs_.end())
+					break;
 			}
+		}
 	}
 
 public:

@@ -2,13 +2,15 @@
 #include <string>
 #include <vector>
 #include <cstdint>
-#include <array>
+#include <ctime> 
+#include <sstream> 
+#include <cassert> 
 
 using std::string;
-using std::uint64_t;
-using std::pow;
+using std::vector;
+using std::int64_t;
 
-uint64_t powers[] =
+static const int64_t powers[] =
 {
 	1,
 	10,
@@ -31,8 +33,9 @@ uint64_t powers[] =
 	1000000000000000000
 };
 
-static const uint64_t prime = 1301081;
-
+static const int64_t base = 10;
+static const int64_t prime = 32416190071;
+static const size_t maxL = std::size(powers);
 
 struct Data
 {
@@ -46,67 +49,166 @@ Data read_input()
 	return data;
 }
 
-void print_occurrences(const std::vector<int> &output)
+void print_occurrences(std::ostream &os, vector<size_t> &output)
 {
-	for (size_t i = 0; i < output.size(); ++i)
-		std::cout << output[i] << " ";
-	std::cout << "\n";
+	for (const auto i : output)
+	{
+		os << i << " ";
+	}
+	os << "\n";
 }
 
-uint64_t hash(const string &k, size_t L, uint64_t m)
+int64_t mod(int64_t a, int64_t p)
 {
-	uint64_t h = 0;
-	uint64_t base = 10;
+	return ((a % p) + p) % p;
+}
+
+int64_t random(int64_t low, int64_t high)
+{
+	srand((unsigned)time(0));
+	return low + int64_t((double)rand() / (RAND_MAX + 1) * (high - low));
+}
+
+int64_t hash(const string &k, size_t L, int64_t m)
+{
+	int64_t h = 0;
 
 	for (size_t l = 0; l < L; ++l)
 		{
-		h += uint64_t(k[l]) * powers[L - l - 1];
+		h += int64_t(k[l]) * powers[L - l - 1];
 		}
 
-	return h % m;
+	return mod(h, m);
 }
 
-uint64_t next_hash(uint64_t hash, size_t i, const string &s, size_t L, uint64_t m)
+int64_t next_hash(int64_t hash, size_t i, const string &s, size_t L, int64_t m)
 {
-	uint64_t base = 10;
-
-	return (base * (hash - powers[L - 1] * uint64_t(s[i])) + uint64_t(s[i + L])) % m;
+	return mod((base * (hash - powers[L - 1] * int64_t(s[i])) + int64_t(s[i + L])), m);
 }
 
-std::vector<int> get_occurrences(const Data &input)
+int64_t poly_hash(const string &S, size_t begin, size_t end, int64_t p, int64_t x)
 {
+	int64_t hash = 0;
+	for (size_t i = end; i > begin; --i)
+	{
+		hash = (hash * x + S[i - 1]) % p;
+	}
+	return hash;
+}
+
+int64_t poly_hash(const string &S, int64_t p, int64_t x)
+{
+	return poly_hash(S, 0, S.length(), p, x);
+}
+
+bool are_equal(const string &pattern, const string &text, size_t off)
+{
+	const char *p = pattern.c_str();
+	const char *t = text.c_str() + off;
+
+	while (*p != '\0')
+	{
+		if (*p != *t)
+			return false;
+		++p;
+		++t;
+	}
+
+	return true;
+}
+
+vector<size_t> rolling_hash(const Data &input)
+{
+	vector<size_t> ans;
+
 	const string &p = input.pattern;
 	const string &s = input.text;
+	const size_t L = p.length();
 
-	std::vector<int> ans;
+	int64_t hp = hash(p, L, prime);
+	int64_t hs = hash(s, L, prime);
+
+	for (size_t i = 0; i < s.length() - L + 1; ++i)
+	{
+		if (hs == hp)
+		{
+			if (are_equal(p, s, i))
+				ans.push_back(i);
+		}
+
+		hs = next_hash(hs, i, s, L, prime);
+	}
 
 	return ans;
 }
 
+vector<size_t> rabin_karp(const Data &input)
+{
+	vector<size_t> ans;
+
+	const string &P = input.pattern;
+	const string &T = input.text;
+	const size_t L = P.length();
+
+	if (L <= T.length())
+	{
+		int64_t p = prime;
+		int64_t x = random(1, p - 1);
+
+		int64_t pHash = poly_hash(P, p, x);
+
+		for (size_t i = 0; i <= T.length() - L; ++i)
+		{
+			int64_t tHash = poly_hash(T, i, i + L, p, x);
+
+			if (pHash == tHash)
+			{
+				if (are_equal(P, T, i))
+					ans.push_back(i);
+			}
+		}
+	}
+
+	return ans;
+}
+
+vector<size_t> get_occurrences(const Data &input)
+{
+	//return rolling_hash(input);
+	return rabin_karp(input);
+}
 
 int main()
 {
 	std::ios_base::sync_with_stdio(false);
-	//print_occurrences(get_occurrences(read_input()));
+	print_occurrences(std::cout, get_occurrences(read_input()));
 
-	string a1 = "alasdair";
-	string a2 = "ala";
+	auto Test = [&](const string &text, const string &pattern, const string &expected)
+	{
+		Data d;
+		d.text = text;
+		d.pattern = pattern;
+		std::stringstream ss;
+		print_occurrences(ss, get_occurrences(d));
+		assert(expected == ss.str());
+	};
 
-	uint64_t h3 = hash("ala", 3, prime);
-	uint64_t h4 = hash("las", 3, prime);
-	uint64_t h5 = hash("asd", 3, prime);
-	uint64_t h6 = hash("sda", 3, prime);
-	uint64_t h7 = hash("dai", 3, prime);
-	uint64_t h8 = hash("air", 3, prime);
+	Test("alasdair", "ala", "0 \n");
+	Test("alasdair", "air", "5 \n");
+	Test("alasdair", "a", "0 2 5 \n");
+	Test("abacaba", "aba", "0 4 \n");
+	Test("testTesttesT", "Test", "4 \n");
+	Test("baaaaaaa", "aaaaa", "1 2 3 \n");
+	Test("hello", "lo", "3 \n");
+	Test("lo", "hello", "\n");
 
-	uint64_t h1 = hash(a2, a2.length(), prime);
+	string example = "the quick brown fox jumps over the laxy dog. jackdaws love my big sphinx of quartz.";
 
-	uint64_t h2 = hash(a1, a2.length(), prime);
-
-	for (size_t i = 1; i < a1.length() - a2.length() + 1; ++i)
-		{
-		h2 = next_hash(h2, i, a1, a2.length(), prime);
-		}
+	Test(example, "the", "0 31 \n");
+	Test(example, ".", "43 82 \n");
+	Test(example, "jackdaws love my big sphinx of quartz.", "45 \n");
+	Test(example, " ", "3 9 15 19 25 30 34 39 44 53 58 61 65 72 75 \n");
+	Test(example, "brown fox jumps over the laxy dog. jackdaws love my big sph", "10 \n");
 
 	return 0;
 }

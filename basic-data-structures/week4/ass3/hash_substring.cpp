@@ -5,9 +5,11 @@
 #include <ctime> 
 #include <sstream> 
 #include <cassert> 
+#include <unordered_map>
 
 using std::string;
 using std::vector;
+using std::unordered_map;
 using std::int64_t;
 
 static const int64_t powers[] =
@@ -142,6 +144,33 @@ vector<size_t> rolling_hash(const Data &input)
 	return ans;
 }
 
+unordered_map<size_t, int64_t> precompute_hashes(const string &T, size_t L, int64_t p, int64_t x)
+{
+	size_t TL = T.length();
+
+	unordered_map<size_t, int64_t> H;
+	H.reserve(TL - L + 1);
+
+	string S = T.substr(TL - L);
+	H[TL - L] = poly_hash(S, p, x);
+
+	int64_t y = 1;
+	for (size_t i = 1; i <= L; ++i)
+		{
+		y = mod(y * x, p);
+		//y = (y * x) % p;
+		}
+
+	for (size_t j = TL - L; j > 0; --j)
+		{
+		size_t i = j - 1;
+		H[i] = mod(x * H[i + 1] + T[i] - y * T[i + L], p);
+		//H[i] = (x * H[i + 1] + T[i] - y * T[i + L]) % p;
+		}
+
+	return H;
+}
+
 vector<size_t> rabin_karp(const Data &input)
 {
 	vector<size_t> ans;
@@ -157,9 +186,12 @@ vector<size_t> rabin_karp(const Data &input)
 
 		int64_t pHash = poly_hash(P, p, x);
 
+		unordered_map<size_t, int64_t> H = precompute_hashes(T, L, p, x);
+
 		for (size_t i = 0; i <= T.length() - L; ++i)
 		{
-			int64_t tHash = poly_hash(T, i, i + L, p, x);
+			//int64_t tHash = poly_hash(T, i, i + L, p, x);
+			int64_t tHash = H[i];
 
 			if (pHash == tHash)
 			{
@@ -181,7 +213,7 @@ vector<size_t> get_occurrences(const Data &input)
 int main()
 {
 	std::ios_base::sync_with_stdio(false);
-	print_occurrences(std::cout, get_occurrences(read_input()));
+	//print_occurrences(std::cout, get_occurrences(read_input()));
 
 	auto Test = [&](const string &text, const string &pattern, const string &expected)
 	{
@@ -202,13 +234,13 @@ int main()
 	Test("hello", "lo", "3 \n");
 	Test("lo", "hello", "\n");
 
-	string example = "the quick brown fox jumps over the laxy dog. jackdaws love my big sphinx of quartz.";
+	string example = "the quick brown fox jumps over the lazy dog. jackdaws love my big sphinx of quartz.";
 
 	Test(example, "the", "0 31 \n");
 	Test(example, ".", "43 82 \n");
 	Test(example, "jackdaws love my big sphinx of quartz.", "45 \n");
 	Test(example, " ", "3 9 15 19 25 30 34 39 44 53 58 61 65 72 75 \n");
-	Test(example, "brown fox jumps over the laxy dog. jackdaws love my big sph", "10 \n");
+	Test(example, "brown fox jumps over the lazy dog. jackdaws love my big sph", "10 \n");
 
 	return 0;
 }

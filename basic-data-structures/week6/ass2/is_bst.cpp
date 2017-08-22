@@ -34,32 +34,12 @@ public:
 
 	void in_order_traversal(int i)
 	{
-		if (i == -1)
+		if (i == -1 || i >= n)
 			return;
 
 		in_order_traversal(left[i]);
 		result.push_back(key[i]);
 		in_order_traversal(right[i]);
-	}
-
-	void pre_order_traversal(int i)
-	{
-		if (i == -1)
-			return;
-
-		result.push_back(key[i]);
-		pre_order_traversal(left[i]);
-		pre_order_traversal(right[i]);
-	}
-
-	void post_order_traversal(int i)
-	{
-		if (i == -1)
-			return;
-
-		post_order_traversal(left[i]);
-		post_order_traversal(right[i]);
-		result.push_back(key[i]);
 	}
 
 	vector <int> in_order()
@@ -69,42 +49,24 @@ public:
 		return result;
 	}
 
-	vector <int> pre_order()
+	bool is_bst()
 	{
-		result.clear();
-		pre_order_traversal(0);
-		return result;
-	}
+		in_order();
 
-	vector <int> post_order()
-	{
-		result.clear();
-		post_order_traversal(0);
-		return result;
+		return result.empty() || std::is_sorted(begin(result), end(result));
 	}
 };
-
-void print(const vector <int> &a)
-{
-	for (size_t i = 0; i < a.size(); i++)
-		{
-		if (i > 0)
-			{
-			cout << ' ';
-			}
-		cout << a[i];
-		}
-	cout << '\n';
-}
 
 int main_with_large_stack_space()
 {
 	ios_base::sync_with_stdio(0);
 	TreeOrders t;
 	t.read();
-	print(t.in_order());
-	print(t.pre_order());
-	print(t.post_order());
+
+	if (t.is_bst())
+		cout << "CORRECT\n";
+	else
+		cout << "INCORRECT\n";
 	return 0;
 }
 

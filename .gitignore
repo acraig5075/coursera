@@ -36,6 +36,7 @@
 *.vcxproj
 *.filters
 *.config
+*.user
 
 .vs/
 Debug/

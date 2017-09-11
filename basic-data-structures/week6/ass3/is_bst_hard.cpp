@@ -18,6 +18,8 @@ using std::cout;
 using std::cout;
 using std::int64_t;
 
+//#define MY_TESTING
+
 struct Seq
 {
 	Seq(int i, int k)
@@ -25,21 +27,17 @@ struct Seq
 		, key(k)
 	{}
 
-	int key;
 	int ind;
+	int key;
 };
 
 class TreeOrders
 {
-	int n;
+	int n = 0;
 	vector <int> key;
 	vector <int> left;
 	vector <int> right;
 	vector <Seq> result;
-
-	bool bst = true;
-	int64_t minKey;
-	int64_t maxKey;
 
 public:
 	void read(std::istream &in)
@@ -73,83 +71,12 @@ public:
 		return result;
 	}
 
-	//void test_node(int i)
-	//{
-	//	if (!bst || i == -1 || i >= n)
-	//		return;
-
-	//	if (i == 0)
-	//		minKey = maxKey = key[0];
-
-	//	int thisKey = key[i];
-	//	int li = left[i];
-	//	int ri = right[i];
-
-	//	if (li != -1)
-	//	{
-	//		int lk = key[li];
-	//		if (lk >= thisKey)
-	//		{
-	//			bst = false;
-	//			return;
-	//		}
-
-	//		if (lk < minKey)
-	//			minKey = lk;
-	//	}
-
-	//	test_node(li);
-
-	//	if (ri != -1)
-	//	{
-	//		int rk = key[ri];
-	//		if (rk < thisKey || rk > maxKey)
-	//		{
-	//			bst = false;
-	//			return;
-	//		}
-
-	//		if (rk > maxKey)
-	//			maxKey = rk;
-	//	}
-	//	test_node(ri);
-	//}
-
-	void test_node(int i)
+	bool is_valid(int i)
 	{
-		int thisKey = key[i];
-	
+		int k = key[i];
 		int li = left[i];
-		if (li != -1)
-		{
-			int lk = key[li];
-			if (lk < thisKey && lk < maxKey)
-			{
-				if (lk < minKey)
-					minKey = lk;
-			}
-			else
-			{
-				bst = false;
-				return;
-			}
-		}
-
 		int ri = right[i];
-		if (ri != -1)
-		{
-			int rk = key[ri];
-			if (rk >= thisKey && rk > minKey)
-			{
-				if (rk > maxKey)
-					maxKey = rk;
-			}
-			else
-			{
-				bst = false;
-				return;
-			}
-		}
+		return ((li == -1 || key[li] < k) && (ri == -1 || k <= key[ri]));
 	}
 
 	bool is_bst()
@@ -167,7 +94,7 @@ public:
 			if (i->key > j->key)
 				return false;
 
-			if (i->key == j->key && right[i->ind] != j->ind)
+			if (i->key == j->key && (!is_valid(i->ind) || !is_valid(j->ind)))
 				return false;
 		}
 
@@ -177,6 +104,9 @@ public:
 
 int main_with_large_stack_space()
 {
+
+#if defined MY_TESTING
+
 	auto Test = [](bool expected, const string &test)
 	{
 		TreeOrders t;
@@ -205,16 +135,20 @@ int main_with_large_stack_space()
 	Test(false, "8 4 1 2 2 3 4 6 5 6 1 -1 -1 3 -1 7 5 -1 -1 7 -1 -1 8 -1 -1");
 	Test(true, "4 -3 -1 1 -1 -1 2 0 3 -1 -1 -1 -1");
 	Test(true, "3 5 -1 1 8 2 -1 5 -1 -1");
-	Test(true, "5 2147483647 1 2 0 3 4 2147483647 -1 -1 - 2147483648 -1 -1 0 -1 -1");
+	Test(true, "5 2147483647 1 2 0 3 4 2147483647 -1 -1 -2147483648 -1 -1 0 -1 -1");
 
-	//ios_base::sync_with_stdio(0);
-	//TreeOrders t;
-	//t.read(cin);
+#else
 
-	//if (t.is_bst())
-	//	cout << "CORRECT\n";
-	//else
-	//	cout << "INCORRECT\n";
+	ios_base::sync_with_stdio(0);
+	TreeOrders t;
+	t.read(cin);
+
+	if (t.is_bst())
+		cout << "CORRECT\n";
+	else
+		cout << "INCORRECT\n";
+
+#endif
 	return 0;
 }
 

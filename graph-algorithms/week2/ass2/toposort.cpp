@@ -3,6 +3,8 @@
 #include <string>
 #include <sstream>
 #include <cassert>
+#include <algorithm>
+#include <iterator>
 
 using std::vector;
 using std::pair;
@@ -14,6 +16,7 @@ struct node
 	bool visited = false;
 	int previsit = 0;
 	int postvisit = 0;
+	int id = 0;
 };
 
 class graph
@@ -94,18 +97,7 @@ public:
 		return nodes[v].postvisit;
 	}
 
-	void print_nodes()
-	{
-		int i = 1;
-		for (const auto &n : nodes)
-		{
-			std::cout << i << " " << n.previsit << " " << n.postvisit << "\n";
-			++i;
-		}
-
-		std::cout << "\n";
-	}
-
+	// assignment 1
 	bool is_acyclic()
 	{
 		dfs();
@@ -122,6 +114,41 @@ public:
 		}
 
 		return true; // every edge u->v has post(u) > post(v)
+	}
+
+	void numerate_nodes()
+	{
+		int id = 0;
+		for (auto &n : nodes)
+		{
+			n.id = id++;
+		}
+	}
+
+	// assignment 2
+	vector<int> topological_sort()
+	{
+		dfs();
+
+		numerate_nodes();
+
+		// work with a copy of the nodes
+		vector<node> copy = nodes;
+
+		// sort vertices by reverse post-order
+		sort(begin(copy), end(copy), [](const node &a, const node &b)
+		{
+			return a.postvisit > b.postvisit;
+		});
+
+		// extract the ordered id's and return
+		vector<int> order;
+		transform(begin(copy), end(copy), std::back_inserter(order), [](const node &n)
+		{
+			return n.id;
+		});
+
+		return order;
 	}
 
 private:
@@ -141,10 +168,10 @@ void my_main(std::istream &in, std::ostream &out)
 
 	g.read(in);
 
-	if (g.is_acyclic())
-		out << "0";
-	else
-		out << "1";
+	vector<int> order = g.topological_sort();
+
+	for (auto i : order)
+		out << i + 1 << " ";
 }
 
 int main()
@@ -159,17 +186,10 @@ int main()
 	//	assert(out.str() == expected);
 	//};
 
-	//Test("9 8 1 2 2 3 3 1 1 4 5 6 7 8 8 9 9 7", "1");
-	//Test("4 4 1 2 4 1 2 3 3 1 ", "1");
-	//Test("5 7 1 2 2 3 1 3 3 4 1 4 2 5 3 5 ", "0");
-	//Test("5 8 4 3 1 2 3 1 3 4 2 5 5 1 5 4 5 3", "1");
-	//Test("5 8 4 3 1 2 3 1 3 4 5 2 5 1 5 4 5 3", "1");
-	//Test("5 1 4 3 ", "0");
-	//Test("4 3 1 2 4 1 3 1 ", "0");
-	//Test("4 1 3 1", "0");
-	//Test("4 4 1 2 2 3 1 4 4 3 ", "0");
-	//Test("4 5 1 2 2 3 1 4 4 3 3 4", "1");
-	//Test("4 6 1 2 2 3 1 4 4 3 3 4 4 1", "1");
+	//Test("5 6 1 2 1 4 1 5 2 3 3 4 ", "1 5 2 3 4 ");
+	//Test("4 3 1 2 4 1 3 1 ", "4 3 1 2 ");
+	//Test("4 1 3 1 ", "4 3 2 1 ");
+	//Test("5 7 2 1 3 2 3 1 4 3 4 1 5 2 5 3 ", "5 4 3 2 1 ");
 
 	return 0;
 }

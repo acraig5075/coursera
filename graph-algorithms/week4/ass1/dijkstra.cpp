@@ -6,16 +6,16 @@
 #include <algorithm>
 #include <iterator>
 #include <queue>
-#include <deque>
+#include <functional>
 
 using std::vector;
 using std::pair;
 using std::string;
 using std::stringstream;
 using std::queue;
-using std::deque;
+using std::priority_queue;
 
-#define infinity -1
+#define infinity 10000000
 
 struct node
 {
@@ -279,64 +279,38 @@ public:
 		{
 			return dist < rhs.dist;
 		}
-	};
-
-	deque<dijkstr_type> make_queue()
-	{
-		deque<dijkstr_type> h;
-
-		for (int n = 0; n < (int)dist.size(); ++n)
+		bool operator > (const dijkstr_type &rhs) const
 		{
-			h.push_back({ n, dist[n] });
+			return dist > rhs.dist;
 		}
-
-		return h;
-	}
-
-	int extract_min(deque<dijkstr_type> &h)
-	{
-		sort(begin(h), end(h));
-
-		auto front = h.front();
-		h.pop_front();
-
-		return front.node;
-	}
-
-	void change_priority(deque<dijkstr_type> &h, int node, int dist)
-	{
-		auto itr = find_if(begin(h), end(h), [node](const dijkstr_type &item) 
-		{
-			return item.node == node;
-		});
-
-		if (itr != end(h))
-			itr->dist = dist;
-	}
+	};
 
 	// week 4, assignment 1
 	void dijkstra(int s)
 	{
-		dist.resize(n, std::numeric_limits<int>::max());
+		dist.resize(n, infinity);
 		prev.resize(n, -1);
 
 		dist[s] = 0;
-		bool changed = true;
 
-		auto h = make_queue();
+		priority_queue<dijkstr_type, vector<dijkstr_type>, std::greater<dijkstr_type> > h;
 
-		while (changed && !h.empty())
+		h.push({ s, dist[s] });
+
+		while (!h.empty())
 		{
-			changed = false;
-			int u = extract_min(h);
+			int u = h.top().node;
+			h.pop();
+
 			for (auto edge : adjacency_list[u])
 			{
+				assert(dist[u] != infinity);
+
 				if (dist[edge.to] > dist[u] + edge.weight)
 				{
 					dist[edge.to] = dist[u] + edge.weight;
 					prev[edge.to] = u;
-					change_priority(h, edge.to, dist[edge.to]);
-					changed = true;
+					h.push({ edge.to, dist[edge.to] });
 				}
 			}
 		}
@@ -370,7 +344,7 @@ void my_main(std::istream &in, std::ostream &out)
 
 	int distance = g.get_distance(b);
 
-	if (distance == std::numeric_limits<int>::max())
+	if (distance == infinity)
 		out << "-1";
 	else
 		out << distance;
@@ -388,14 +362,27 @@ int main()
 		assert(out.str() == expected);
 	};
 
-
 	Test("6 11 1 2 3 1 3 10 2 3 8 2 4 3 2 5 5 3 2 2 3 5 5 4 3 3 4 5 1 4 6 2 5 6 0 1 6 ", "7");
 	Test("4 4 1 2 1 4 1 2 2 3 2 1 3 5 1 3 ", "3");
 	Test("5 9 1 2 4 1 3 2 2 3 2 3 2 1 2 4 2 3 5 4 5 4 1 2 5 3 3 4 4 1 5 ", "6");
 	Test("3 3 1 2 7 1 3 5 2 3 2 3 2 ", "-1");
 	Test("1 0 1 1 ", "0");
+	Test("2 0 1 2 ", "-1");
 	Test("6 11 1 2 3 1 3 10 2 3 8 2 4 3 2 5 5 3 2 2 3 5 5 4 3 3 4 5 1 4 6 2 6 5 0 1 6 ", "8");
 	Test("6 11 1 2 3 1 3 10 2 3 8 2 4 3 2 5 5 3 2 2 3 5 5 4 3 3 4 5 1 6 4 2 6 5 0 1 6 ", "-1");
+	Test("9 14 1 2 4 1 8 8 2 3 8 2 8 11 3 4 7 3 9 2 3 6 4 4 5 9 4 6 14 6 5 10 7 6 2 8 7 1 8 9 7 9 7 6 1 5 ", "21");
+	Test("4 3 1 2 1 2 3 1 3 1 1 1 4 ", "-1");
+	Test("4 3 1 2 1 2 3 1 3 1 1 3 3 ", "0");
+	Test("4 3 1 2 1 2 3 1 3 1 1 4 4 ", "0");
+	Test("6 6 1 2 1 2 3 1 3 1 1 4 5 1 5 6 1 6 4 1 1 4 ", "-1");
+	Test("18 33 1 3 5 1 5 5 1 8 8 1 15 7 2 5 2 2 6 7 3 2 9 3 6 3 4 3 4 4 7 7 4 11 1 5 1 7 5 8 6 6 2 2 6 3 8 8 5 2 8 15 1 9 5 6 9 10 2 9 13 8 10 6 8 10 7 4 11 4 3 11 7 2 11 10 8 12 16 8 13 12 9 13 17 4 14 17 8 15 8 1 15 16 8 16 17 9 17 13 5 1 3 ", "5");
+	Test("5 9 1 3 5 1 4 5 2 4 2 2 5 7 3 2 9 3 5 3 4 1 7 5 2 2 5 3 8 1 3 ", "5");
+	Test("3 3 1 2 2 2 3 3 1 3 9 1 3", "5");
+	Test("4 6 1 2 2 2 3 3 1 3 9 2 1 7 2 3 8 4 1 0 4 3", "5");
+	Test("5 9 1 3 5 1 4 5 2 4 2 2 5 7 3 2 9 3 5 3 4 1 7 5 2 2 5 3 8 1 2 ", "10");
+	Test("5 9 1 3 5 1 4 5 2 4 2 2 5 7 3 2 9 3 5 3 4 1 7 5 2 2 5 3 8 1 5 ", "8");
+	Test("5 9 1 3 5 1 4 5 2 4 2 2 5 7 3 2 9 3 5 3 4 1 7 5 2 2 5 3 8 1 4 ", "5");
+	Test("18 33 1 3 5 1 5 5 1 8 8 1 15 7 2 5 2 2 6 7 3 2 9 3 6 3 4 3 4 4 7 7 4 11 1 5 1 7 5 8 6 6 2 2 6 3 8 8 5 2 8 15 1 9 5 6 9 10 2 9 13 8 10 6 8 10 7 4 11 4 3 11 7 2 11 10 8 12 16 8 13 12 9 13 17 4 14 17 8 15 8 1 15 16 8 16 17 9 17 13 5 1 2 ", "10");
 
 	return 0;
 }

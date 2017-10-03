@@ -317,7 +317,50 @@ public:
 	}
 
 	void bellman_ford(int s)
-		{}
+	{
+		dist.resize(n, infinity);
+		prev.resize(n, -1);
+
+		dist[s] = 0;
+
+		for (size_t i = 0; i < n - 1; ++i)
+		{
+			for (size_t u = 0; u < n; ++u)
+			{
+				for (auto v : adjacency_list[u])
+				{
+					if (dist[v.to] > dist[u] + v.weight)
+					{
+						dist[v.to] = dist[u] + v.weight;
+						prev[v.to] = u;
+					}
+				}
+			}
+		}
+	}
+
+	// week 4, assignment 2
+	bool has_negative_cycle()
+	{
+		bellman_ford(1);
+
+		// whether one more iteration of bellman-ford makes a change
+		bool change = false;
+
+		for (size_t u = 0; u < n; ++u)
+		{
+			for (auto v : adjacency_list[u])
+			{
+				if (dist[v.to] > dist[u] + v.weight)
+				{
+					dist[v.to] = dist[u] + v.weight;
+					change = true;
+				}
+			}
+		}
+
+		return change;
+	}
 
 private:
 	size_t n = 0;
@@ -338,31 +381,30 @@ void my_main(std::istream &in, std::ostream &out)
 
 	g.read_directed_weighted(in);
 
-	g.bellman_ford(a);
-
-	int distance = g.get_distance(b);
-
-	if (distance == infinity)
-		out << "-1";
+	if (g.has_negative_cycle())
+		out << "1";
 	else
-		out << distance;
+		out << "0";
 }
 
 int main()
 {
-	//my_main(std::cin, std::cout);
+	my_main(std::cin, std::cout);
 
-	auto Test = [](string input, string expected)
-	{
-		stringstream in(input);
-		stringstream out;
-		my_main(in, out);
-		assert(out.str() == expected);
-	};
+	//auto Test = [](string input, string expected)
+	//{
+	//	stringstream in(input);
+	//	stringstream out;
+	//	my_main(in, out);
+	//	assert(out.str() == expected);
+	//};
 
-	Test("4 4 1 2 -5 4 1 2 2 3 2 3 1 1 ", "1");
-	Test("5 7 1 2 -2 2 3 -3 2 4 1 3 1 4 3 4 2 5 1 4 5 2 3", "1");
-	Test("5 7 1 2 -2 2 3 -3 2 4 1 1 3 4 3 4 2 5 1 4 5 2 3", "0");
+	//Test("4 4 1 2 -5 4 1 2 2 3 2 3 1 1 ", "1");
+	//Test("5 7 1 2 -2 2 3 -3 2 4 1 3 1 4 3 4 2 5 1 4 5 2 3", "1");
+	//Test("5 7 1 2 -2 2 3 -3 2 4 1 1 3 4 3 4 2 5 1 4 5 2 3", "0");
+	//Test("4 5 1 2 5 1 3 4 2 4 3 3 2 -6 4 3 2 ", "1");
+	//Test("4 5 1 2 5 1 3 4 2 4 3 2 3 -6 4 3 2 ", "0");
+	//Test("5 5 1 2 1 2 3 1 3 4 -3 4 2 1 3 5 1 ", "1");
 
 	return 0;
 }

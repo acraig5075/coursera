@@ -7,7 +7,6 @@
 #include <iterator>
 #include <queue>
 #include <functional>
-#include <set>
 
 using std::vector;
 using std::pair;
@@ -15,7 +14,6 @@ using std::string;
 using std::stringstream;
 using std::queue;
 using std::priority_queue;
-using std::set;
 
 #define infinity 10000000
 
@@ -367,9 +365,9 @@ public:
 	}
 
 	// week 4, assignment 3
-	set<int> bellman_ford_final()
+	vector<int> bellman_ford_final()
 	{
-		set<int> changes;
+		vector<int> changes;
 
 		for (size_t u = 0; u < n; ++u)
 		{
@@ -377,27 +375,35 @@ public:
 			{
 				if (dist[v.to] > dist[u] + v.weight)
 				{
-					changes.insert(v.to);
+					changes.push_back(v.to);
 				}
 			}
 		}
+
+		// easier this way than std::set
+		sort(begin(changes), end(changes));
+		changes.erase(unique(begin(changes), end(changes)), end(changes));
 
 		return changes;
 	}
 
 	// adaptation of bfs for a number of starting nodes
-	void bfs(const set<int> &a)
+	vector<int> bfs(const vector<int> &set, int start)
 	{
-		if (a.empty())
-			return;
+		if (set.empty())
+			return vector<int>();
 
 		vector<int> ldist(n, infinity);
 
+		// ignore nodes that can't be reached from the start
 		queue<int> q;
-		for (auto s : a)
-			q.push(s);
+		for (auto n : set)
+		{
+			if (reachable(start, n))
+				q.push(n);
+		}
 
-		// find all nodes reachable from `a`
+		// find all nodes reachable from the set
 		while (!q.empty())
 		{
 			int u = q.front();
@@ -416,12 +422,25 @@ public:
 			}
 		}
 
-		// these nodes can encounter a negative loop, set them to neg infinity
+		// ldist values that are not infinity are reachable from the set
+
+		vector<int> nodes;
 		for (int u = 0; u < (int)ldist.size(); ++u)
 		{
 			if (ldist[u] != infinity)
-				dist[u] = -infinity;
+				nodes.push_back(u);
 		}
+		return nodes;
+	}
+
+	// is there a path from node x to node y.
+	bool reachable(int x, int y)
+	{
+		unvisit_all();
+
+		explore(x);
+
+		return visited(node_list[y]);
 	}
 
 private:
@@ -449,53 +468,56 @@ void my_main(std::istream &in, std::ostream &out)
 
 	g.bellman_ford(a);
 
-	set<int> negative_cycles = g.bellman_ford_final();
+	vector<int> nodes;
 
-	g.bfs(negative_cycles);
+	// get nodes belonging to negative cycles
+	nodes = g.bellman_ford_final();
 
+	// get nodes reachable from the negative cycles
+	nodes = g.bfs(nodes, a);
+
+	// output
 	for (int v = 0; v < (int)n; ++v)
 	{
-		int dist = g.get_distance(v);
-
-		if (dist == infinity)
+		if (!g.reachable(a, v))
 			out << "*\n";
-		else if (dist == -infinity)
+		else if (find(begin(nodes), end(nodes), v) != end(nodes))
 			out << "-\n";
 		else
-			out << dist << "\n";
+			out << g.get_distance(v) << "\n";
 	}
 
 }
 
 int main()
 {
-	//my_main(std::cin, std::cout);
+	my_main(std::cin, std::cout);
 
-	auto Test = [](string input, string expected)
-	{
-		stringstream in(input);
-		stringstream out;
-		my_main(in, out);
-		string actual = out.str();
-		replace(begin(actual), end(actual), '\n', ' ');
-		assert(actual == expected);
-	};
+	//auto Test = [](string input, string expected)
+	//{
+	//	stringstream in(input);
+	//	stringstream out;
+	//	my_main(in, out);
+	//	string actual = out.str();
+	//	replace(begin(actual), end(actual), '\n', ' ');
+	//	assert(actual == expected);
+	//};
 
-	Test("6 7 1 2 10 2 3 5 1 3 100 3 5 7 5 4 10 4 3 -18 6 1 -1 1 ", "0 10 - - - * ");
-	Test("5 4 1 2 1 4 1 2 2 3 2 3 1 -5 4 ", "- - - 0 * ");
-	Test("4 4 1 2 1 1 3 5 2 3 2 4 1 2 4 ", "2 3 5 0 ");
-	Test("5 7 1 2 -2 2 3 -3 2 4 1 3 1 4 3 4 2 5 1 4 5 2 3 5", "- - - - 0 ");
-	Test("5 7 1 2 -2 2 3 -3 2 4 1 1 3 4 3 4 2 5 1 4 5 2 3 5", "4 2 -1 1 0 ");
-	Test("3 3 1 2 1 2 3 1 3 1 1 1", "0 1 2 ");
-	Test("6 6 1 2 1 2 3 1 3 1 1 4 5 1 5 6 1 6 4 1 1 ", "0 1 2 * * * ");
-	Test("1 0 1", "0 ");
-	Test("2 0 1", "0 * ");
-	Test("2 0 2", "* 0 ");
-	Test("4 4 1 2 1 2 3 1 3 1 -3 3 4 5 1 ", "- - - - ");
-	Test("4 5 1 2 1 2 3 1 3 1 -3 3 4 1 4 3 1 4 ", "- - - - ");
-	Test("9 10 4 5 1 4 1 2 1 2 1 2 3 2 3 1 -5 4 6 2 6 7 1 7 8 2 8 6 -5 8 9 1 4 ", "- - - 0 1 - - - - ");
-	Test("10 11 6 1 -1 1 2 10 1 3 100 2 3 5 3 5 7 3 7 2 5 4 10 5 8 3 8 10 2 4 3 -18 4 9 5 1 ", "0 10 - - - * - - - - ");
-	Test("6 8 2 3 -1 3 2 -1 1 4 1 1 5 1 1 6 1 2 4 1 2 5 1 2 6 1 1 ", "0 * * 1 1 1 ");
+	//Test("6 7 1 2 10 2 3 5 1 3 100 3 5 7 5 4 10 4 3 -18 6 1 -1 1 ", "0 10 - - - * ");
+	//Test("5 4 1 2 1 4 1 2 2 3 2 3 1 -5 4 ", "- - - 0 * ");
+	//Test("4 4 1 2 1 1 3 5 2 3 2 4 1 2 4 ", "2 3 5 0 ");
+	//Test("5 7 1 2 -2 2 3 -3 2 4 1 3 1 4 3 4 2 5 1 4 5 2 3 5", "- - - - 0 ");
+	//Test("5 7 1 2 -2 2 3 -3 2 4 1 1 3 4 3 4 2 5 1 4 5 2 3 5", "4 2 -1 1 0 ");
+	//Test("3 3 1 2 1 2 3 1 3 1 1 1", "0 1 2 ");
+	//Test("6 6 1 2 1 2 3 1 3 1 1 4 5 1 5 6 1 6 4 1 1 ", "0 1 2 * * * ");
+	//Test("1 0 1", "0 ");
+	//Test("2 0 1", "0 * ");
+	//Test("2 0 2", "* 0 ");
+	//Test("4 4 1 2 1 2 3 1 3 1 -3 3 4 5 1 ", "- - - - ");
+	//Test("4 5 1 2 1 2 3 1 3 1 -3 3 4 1 4 3 1 4 ", "- - - - ");
+	//Test("9 10 4 5 1 4 1 2 1 2 1 2 3 2 3 1 -5 4 6 2 6 7 1 7 8 2 8 6 -5 8 9 1 4 ", "- - - 0 1 - - - - ");
+	//Test("10 11 6 1 -1 1 2 10 1 3 100 2 3 5 3 5 7 3 7 2 5 4 10 5 8 3 8 10 2 4 3 -18 4 9 5 1 ", "0 10 - - - * - - - - ");
+	//Test("6 8 2 3 -1 3 2 -1 1 4 1 1 5 1 1 6 1 2 4 1 2 5 1 2 6 1 1 ", "0 * * 1 1 1 ");
 
 	return 0;
 }

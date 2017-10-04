@@ -469,28 +469,33 @@ void my_main(std::istream &in, std::ostream &out)
 
 int main()
 {
-	my_main(std::cin, std::cout);
+	//my_main(std::cin, std::cout);
 
-	//auto Test = [](string input, string expected)
-	//{
-	//	stringstream in(input);
-	//	stringstream out;
-	//	my_main(in, out);
-	//	string actual = out.str();
-	//	replace(begin(actual), end(actual), '\n', ' ');
-	//	assert(actual == expected);
-	//};
+	auto Test = [](string input, string expected)
+	{
+		stringstream in(input);
+		stringstream out;
+		my_main(in, out);
+		string actual = out.str();
+		replace(begin(actual), end(actual), '\n', ' ');
+		assert(actual == expected);
+	};
 
-	//Test("6 7 1 2 10 2 3 5 1 3 100 3 5 7 5 4 10 4 3 -18 6 1 -1 1 ", "0 10 - - - * ");
-	//Test("5 4 1 2 1 4 1 2 2 3 2 3 1 -5 4 ", "- - - 0 * ");
-	//Test("4 4 1 2 1 1 3 5 2 3 2 4 1 2 4 ", "2 3 5 0 ");
-	//Test("5 7 1 2 -2 2 3 -3 2 4 1 3 1 4 3 4 2 5 1 4 5 2 3 5", "- - - - 0 ");
-	//Test("5 7 1 2 -2 2 3 -3 2 4 1 1 3 4 3 4 2 5 1 4 5 2 3 5", "4 2 -1 1 0 ");
-	//Test("3 3 1 2 1 2 3 1 3 1 1 1", "0 1 2 ");
-	//Test("6 6 1 2 1 2 3 1 3 1 1 4 5 1 5 6 1 6 4 1 1 ", "0 1 2 * * * ");
-	//Test("1 0 1", "0 ");
-	//Test("2 0 1", "0 * ");
-	//Test("2 0 2", "* 0 ");
+	Test("6 7 1 2 10 2 3 5 1 3 100 3 5 7 5 4 10 4 3 -18 6 1 -1 1 ", "0 10 - - - * ");
+	Test("5 4 1 2 1 4 1 2 2 3 2 3 1 -5 4 ", "- - - 0 * ");
+	Test("4 4 1 2 1 1 3 5 2 3 2 4 1 2 4 ", "2 3 5 0 ");
+	Test("5 7 1 2 -2 2 3 -3 2 4 1 3 1 4 3 4 2 5 1 4 5 2 3 5", "- - - - 0 ");
+	Test("5 7 1 2 -2 2 3 -3 2 4 1 1 3 4 3 4 2 5 1 4 5 2 3 5", "4 2 -1 1 0 ");
+	Test("3 3 1 2 1 2 3 1 3 1 1 1", "0 1 2 ");
+	Test("6 6 1 2 1 2 3 1 3 1 1 4 5 1 5 6 1 6 4 1 1 ", "0 1 2 * * * ");
+	Test("1 0 1", "0 ");
+	Test("2 0 1", "0 * ");
+	Test("2 0 2", "* 0 ");
+	Test("4 4 1 2 1 2 3 1 3 1 -3 3 4 5 1 ", "- - - - ");
+	Test("4 5 1 2 1 2 3 1 3 1 -3 3 4 1 4 3 1 4 ", "- - - - ");
+	Test("9 10 4 5 1 4 1 2 1 2 1 2 3 2 3 1 -5 4 6 2 6 7 1 7 8 2 8 6 -5 8 9 1 4 ", "- - - 0 1 - - - - ");
+	Test("10 11 6 1 -1 1 2 10 1 3 100 2 3 5 3 5 7 3 7 2 5 4 10 5 8 3 8 10 2 4 3 -18 4 9 5 1 ", "0 10 - - - * - - - - ");
+	Test("6 8 2 3 -1 3 2 -1 1 4 1 1 5 1 1 6 1 2 4 1 2 5 1 2 6 1 1 ", "0 * * 1 1 1 ");
 
 	return 0;
 }

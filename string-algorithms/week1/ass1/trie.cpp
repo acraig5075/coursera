@@ -10,67 +10,79 @@ using std::string;
 using std::pair;
 using std::stringstream;
 
-using edges = map<char, size_t>;
-using trie = vector<edges>;
 
-auto find_edge(trie &t, size_t node, char symbol) -> pair<bool, size_t>;
-auto add_edge(trie &t, size_t node, size_t newNode, char symbol) -> void;
-
-trie build_trie(vector<string> & patterns)
+class Trie
 {
-	trie t;
+	using edges = map<char, size_t>;
+	using trie = vector<edges>;
 
-	if (!patterns.empty())
-		t.push_back(edges());
-
-	for (string pattern : patterns)
+public:
+	void build_trie(vector<string> & patterns)
 	{
-		size_t currentNode = 0;
+		if (!patterns.empty())
+			t.push_back(edges());
 
-		for (char currentSymbol : pattern)
+		for (string pattern : patterns)
 		{
-			auto found = find_edge(t, currentNode, currentSymbol);
+			size_t currentNode = 0;
 
-			if (found.first)
+			for (char currentSymbol : pattern)
 			{
-				currentNode = found.second;
-			}
-			else
-			{
-				t.push_back(edges());
-				size_t newNode = t.size() - 1;
-				add_edge(t, currentNode, newNode, currentSymbol);
-				currentNode = newNode;
+				auto found = find_edge(t, currentNode, currentSymbol);
+
+				if (found.first)
+				{
+					currentNode = found.second;
+				}
+				else
+				{
+					t.push_back(edges());
+					size_t newNode = t.size() - 1;
+					add_edge(t, currentNode, newNode, currentSymbol);
+					currentNode = newNode;
+				}
 			}
 		}
 	}
 
-	return t;
-}
-
-auto find_edge(trie &t, size_t node, char symbol) -> pair<bool, size_t>
-{
-	if (node < t.size())
+	void print(std::ostream &out)
 	{
-		edges e = t.at(node);
-
-		auto itr = e.find(symbol);
-
-		if (itr != e.end())
-			return{ true, itr->second };
+		for (size_t i = 0; i < t.size(); ++i)
+		{
+			for (const auto & j : t[i])
+			{
+				out << i << "->" << j.second << ":" << j.first << "\n";
+			}
+		}
 	}
 
-	return{ false, 0 };
-}
-
-auto add_edge(trie & t, size_t node, size_t newNode, char symbol) -> void
-{
-	if (node < t.size())
+private:
+	auto find_edge(trie &t, size_t node, char symbol) -> pair<bool, size_t>
 	{
-		edges &e = t.at(node);
-		e.insert({ symbol, newNode });
+		if (node < t.size())
+		{
+			edges e = t.at(node);
+
+			auto itr = e.find(symbol);
+
+			if (itr != e.end())
+				return{ true, itr->second };
+		}
+
+		return{ false, 0 };
 	}
-}
+
+	auto add_edge(trie & t, size_t node, size_t newNode, char symbol) -> void
+	{
+		if (node < t.size())
+		{
+			edges &e = t.at(node);
+			e.insert({ symbol, newNode });
+		}
+	}
+
+	trie t;
+};
 
 void my_main(std::istream &in, std::ostream &out)
 {
@@ -84,14 +96,9 @@ void my_main(std::istream &in, std::ostream &out)
 		patterns.push_back(s);
 	}
 
-	trie t = build_trie(patterns);
-	for (size_t i = 0; i < t.size(); ++i)
-	{
-		for (const auto & j : t[i])
-		{
-			out << i << "->" << j.second << ":" << j.first << "\n";
-		}
-	}
+	Trie t;
+	t.build_trie(patterns);
+	t.print(out);
 }
 
 int main()

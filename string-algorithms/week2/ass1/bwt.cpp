@@ -47,22 +47,22 @@ void my_main(std::istream &in, std::ostream &out)
 
 int main()
 {
-	//my_main(std::cin, std::cout);
+	my_main(std::cin, std::cout);
 
-	auto Test = [](string input, string expected)
-	{
-		stringstream in(input);
-		stringstream out;
-		my_main(in, out);
-		string actual = out.str();
-		assert(actual == expected);
-	};
+	//auto Test = [](string input, string expected)
+	//{
+	//	stringstream in(input);
+	//	stringstream out;
+	//	my_main(in, out);
+	//	string actual = out.str();
+	//	assert(actual == expected);
+	//};
 
-	Test("AA$", "AA$\n");
-	Test("ACACACAC$", "CCCC$AAAA\n");
-	Test("AGACATA$", "ATG$CAAA\n");
-	Test("ACA$", "AC$A\n");
-	Test("GAGAGA$", "AGGGAA$\n");
+	//Test("AA$", "AA$\n");
+	//Test("ACACACAC$", "CCCC$AAAA\n");
+	//Test("AGACATA$", "ATG$CAAA\n");
+	//Test("ACA$", "AC$A\n");
+	//Test("GAGAGA$", "AGGGAA$\n");
 
 	return 0;
 }

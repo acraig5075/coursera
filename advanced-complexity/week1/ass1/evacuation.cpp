@@ -75,6 +75,8 @@ public:
 		edges[id].flow += flow;
 		edges[id].capacity -= flow;
 		edges[id ^ 1].flow += flow;
+		edges[id ^ 1].capacity = flow;
+
 	}
 };
 
@@ -152,7 +154,7 @@ int minimum_capacity(const FlowGraph &graph, const vector<size_t> &path)
 	{
 		auto edge = graph.get_edge(id);
 
-		if (/*edge.capacity > 0 &&*/ edge.capacity < x)
+		if (edge.capacity < x)
 			x = edge.capacity;
 	}
 
@@ -198,7 +200,7 @@ void my_main(std::istream &in, std::ostream &out)
 
 int main()
 {
-	//my_main(std::cin);
+	//my_main(std::cin, std::cout);
 
 	auto Test = [](string input, string expected)
 		{

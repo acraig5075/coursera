@@ -6,17 +6,22 @@
 #include <string>
 #include <sstream>
 #include <cassert>
+#include <numeric>
+#include <algorithm>
+#include <iterator>
 
 using std::vector;
 using std::pair;
 using std::string;
 using std::stringstream;
 
-const double EPS = 1e-6;
+const double EPS = 1e-12;
 
 #define IsZero(a) (fabs((a)) <= (EPS))
 #define NotZero(a) (fabs((a)) > (EPS))
 #define Equal(a,b) (fabs(a - b) <= (EPS + EPS * fabs(b)))
+#define LessOrEqual(a,b) ((a) <= ((b) + (EPS + EPS * fabs(b))))
+#define Greater(a,b) ((a) > ((b) + (EPS + EPS * fabs(b))))
 
 typedef std::vector<double> Column;
 typedef std::vector<double> Row;
@@ -47,14 +52,15 @@ struct Position
 	int row;
 };
 
-Matrix ReadMatrix(std::istream &in, size_t rows, size_t cols)
+Matrix ReadMatrix(std::istream &in, size_t n, size_t m)
 {
-	Matrix mat(rows, Column(cols));
-	for (size_t r = 0; r < rows; r++)
+	Matrix mat(n, Row(m));
+	for (size_t r = 0; r < n; ++r)
 	{
-		for (size_t c = 0; c < cols; ++c)
+		for (size_t c = 0; c < m; ++c)
 			in >> mat[r][c];
 	}
+
 	return mat;
 }
 
@@ -64,6 +70,23 @@ Column ReadColumn(std::istream &in, size_t length)
 	for (size_t i = 0; i < length; ++i)
 		in >> col[i];
 	return col;
+}
+
+void AppendBounds(Matrix &inequal, Column &amounts, size_t m)
+{
+	// m inequalities of the form amount[i] >= 0
+	for (size_t i = 0; i < m; ++i)
+	{
+		Row row(m, 0.0);
+		row[i] = -1.0;
+		inequal.push_back(row);
+		amounts.push_back(0.0);
+	}
+
+	// one inequality to distinguish between bounded and unbounded cases
+	Row row(m, 1.0);
+	inequal.push_back(row);
+	amounts.push_back(10e9);
 }
 
 Position SelectPivotElement(
@@ -138,8 +161,24 @@ void MarkPivotElementUsed(const Position &pivot_element, std::vector <bool> &use
 	used_columns[pivot_element.column] = true;
 }
 
-Column SolveEquation(Equation equation)
+void PrintSolution(std::ostream &out, bool ok, const Column &b)
 {
+	if (ok)
+	{
+		out << "Solution:";
+		for (size_t c = 0; c < b.size(); ++c)
+			out << std::fixed << std::setprecision(2) << std::setw(10) << b[c] << " ";
+		out << "\n";
+	}
+	else
+	{
+		out << "Solution: <none>\n";
+	}
+}
+
+Column SolveEquation(Equation &equation, bool &ok)
+{
+	ok = true;
 	Matrix &a = equation.a;
 	Column &b = equation.b;
 	int size = a.size();
@@ -164,32 +203,144 @@ Column SolveEquation(Equation equation)
 		{
 			return Equal(row[dim], 1.0);
 		});
-		assert(itr != end(a));
+		//assert(itr != end(a));
 
 		if (itr != end(a))
 		{
 			std::swap(a[dim], a[itr - begin(a)]);
 			std::swap(b[dim], b[itr - begin(a)]);
 		}
+		else
+		{
+			ok = false;
+			break;
+		}
 	}
+
+	PrintSolution(std::cout, ok, b);
 
 	return b;
 }
 
-pair<int, vector<double>> solve_diet_problem(size_t n, size_t m, const Matrix &A, const Column &b, const Column &c)
+vector<vector<size_t>> getAllSubsets(vector<size_t> set)
 {
-	// Write your code here
+	vector< vector<size_t> > subset;
+	vector<size_t> empty;
+	subset.push_back(empty);
 
-	return {0, vector<double>(m, 0)};
+	for (size_t i = 0; i < set.size(); i++)
+	{
+		vector< vector<size_t> > subsetTemp = subset;
+
+		for (size_t j = 0; j < subsetTemp.size(); j++)
+			subsetTemp[j].push_back(set[i]);
+
+		for (size_t j = 0; j < subsetTemp.size(); j++)
+			subset.push_back(subsetTemp[j]);
+	}
+
+	return subset;
+}
+
+
+void PrintMatrix(std::ostream &out, Matrix &A, const Column &b)
+{
+	assert(A.size() == b.size());
+
+	for (size_t r = 0; r < A.size(); ++r)
+	{
+		for (size_t c = 0; c < A[0].size(); ++c)
+			out << std::fixed << std::setprecision(2) << std::setw(10) << A[r][c] << " ";
+		out << "| " << std::setw(14) << b[r] << "\n";
+	}
+	out << "\n";
+}
+
+pair<int, vector<double>> SolveDietProblem(size_t n, size_t m, const Matrix &A, const Column &b, const Column &c)
+{
+	size_t dim = A.size();
+	assert(dim = n + m + 1);
+
+	// get all possible subsets of size m
+	std::vector<size_t> indexes(dim);
+	std::iota(begin(indexes), end(indexes), 0);
+	vector<vector<size_t>> subsets = getAllSubsets(indexes);
+	subsets.erase(std::remove_if(begin(subsets), end(subsets), [m](const vector<size_t> &s)
+	{
+		return s.size() != m;
+	}), end(subsets));
+
+	double maxPleasure = std::numeric_limits<double>::lowest();
+	pair<int, vector<double>> ret = std::make_pair(-1, vector<double>(m, 0));
+
+	// for each subset solve the system of linear inequalities
+	for (const auto s : subsets)
+	{
+		Matrix lhs;
+		Column rhs;
+		for (auto i : s)
+		{
+			lhs.push_back(A[i]);
+			rhs.push_back(b[i]);
+		}
+
+		PrintMatrix(std::cout, lhs, rhs);
+
+		assert(lhs.size() == m);
+		assert(lhs[0].size() == m);
+		assert(rhs.size() == m);
+
+		Equation eq(lhs, rhs);
+		bool ok;
+		Column soln = SolveEquation(eq, ok);
+		if (!ok)
+			continue;
+
+		assert(soln.size() == m);
+
+		// check whether this solution satisfies all the other inequalities
+		bool satisfies = true;
+		for (size_t r = 0; r < dim; ++r)
+		{
+			double left = 0.0;
+			for (size_t c = 0; c < m; ++c)
+			{
+				left += A[r][c] * soln[c];
+			}
+
+			double right = b[r];
+			if (!LessOrEqual(left, right))
+			{
+				satisfies = false;
+				if (r == dim - 1)
+					ret.first = 1;
+			}
+		}
+
+		// pleasure
+		if (satisfies)
+		{
+			assert(soln.size() == c.size());
+			double pleasure = std::inner_product(begin(soln), end(soln), begin(c), 0.0);
+			if (Greater(pleasure, maxPleasure))
+			{
+				maxPleasure = pleasure;
+				ret.first = 0;
+				ret.second = soln;
+			}
+		}
+	}
+
+	return ret;
 }
 
 int my_main(std::istream &in, std::ostream &out)
 {
-	size_t n; // the number of restrictions on your diet (between 1 and 8 inclusive)
-	size_t m; // the number of all available dishes and drinks respectively (between 1 and 8 inclusive)
+	size_t n; // n regular inequalities:	the number of restrictions on your diet (between 1 and 8 inclusive)
+	size_t m; // m variables:				the number of all available dishes and drinks respectively (between 1 and 8 inclusive)
 	in >> n >> m;
 
-	// inequalities
+	// regular inequalities
 	Matrix A = ReadMatrix(in, n, m);
 
 	// amounts of each ingredient
@@ -198,7 +349,12 @@ int my_main(std::istream &in, std::ostream &out)
 	// pleasure of consuming each dish
 	Column c = ReadColumn(in, m);
 
-	pair<int, vector<double>> ans = solve_diet_problem(n, m, A, b, c);
+	// append further inequalities
+	AppendBounds(A, b, m);
+
+	PrintMatrix(std::cout, A, b);
+
+	pair<int, vector<double>> ans = SolveDietProblem(n, m, A, b, c);
 
 	switch (ans.first)
 		{
@@ -207,8 +363,13 @@ int my_main(std::istream &in, std::ostream &out)
 			break;
 		case 0:
 			out << "Bounded solution\n";
-			out << std::fixed << std::setprecision(18);
-			std::copy(begin(ans.second), end(ans.second), std::ostream_iterator<double>(out, " "));
+			out << std::fixed << std::setprecision(15);
+			for (size_t i = 0; i < ans.second.size(); ++i)
+			{
+				if (i > 0)
+					out << " ";
+				out << (IsZero(ans.second[i]) ? 0.0 : ans.second[i]);
+			}
 			out << "\n";
 			break;
 		case 1:
@@ -231,8 +392,8 @@ int main()
 		assert(actual == expected);
 		};
 
-	Test("3 2 -1 -1 1 0 0 1 -1 2 2 -1 2", "Bounded solution\n0.000000000000000 2.000000000000000\n");
 	Test("2 2 1 1 -1 -1 1 -2 1 1", "No solution\n");
+	Test("3 2 -1 -1 1 0 0 1 -1 2 2 -1 2", "Bounded solution\n0.000000000000000 2.000000000000000\n");
 	Test("1 3 0 0 1 3 1 1 1", "Infinity\n");
 
 	return 0;

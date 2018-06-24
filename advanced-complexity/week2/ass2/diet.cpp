@@ -1,3 +1,4 @@
+#include <cmath>
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
@@ -8,12 +9,9 @@
 #include <cassert>
 #include <numeric>
 #include <algorithm>
-#include <iterator>
 
 using std::vector;
 using std::pair;
-using std::string;
-using std::stringstream;
 
 const double EPS = 1e-12;
 
@@ -26,9 +24,6 @@ const double EPS = 1e-12;
 typedef std::vector<double> Column;
 typedef std::vector<double> Row;
 typedef std::vector<Row> Matrix;
-
-using std::string;
-using std::stringstream;
 
 struct Equation
 {
@@ -86,7 +81,7 @@ void AppendBounds(Matrix &inequal, Column &amounts, size_t m)
 	// one inequality to distinguish between bounded and unbounded cases
 	Row row(m, 1.0);
 	inequal.push_back(row);
-	amounts.push_back(10e9);
+	amounts.push_back(10.0e9);
 }
 
 Position SelectPivotElement(
@@ -96,8 +91,6 @@ Position SelectPivotElement(
 {
 	int size = a.size();
 
-	// This algorithm selects the first free element.
-	// You'll need to improve it to pass the problem.
 	Position pivot(0, 0);
 	while (used_rows[pivot.row])
 	{
@@ -129,7 +122,12 @@ void RescalePivotRow(Matrix &a, Column &b, const Position &pivot_element)
 
 	int size = a.size();
 	for (int i = 0; i < size; ++i)
-		a[pivot_element.row][i] /= constant;
+	{
+		if (i == pivot_element.column)
+			a[pivot_element.row][i] = 1.0;
+		else
+			a[pivot_element.row][i] /= constant;
+	}
 	b[pivot_element.row] /= constant;
 }
 
@@ -142,10 +140,21 @@ void SubtractLines(Matrix &a, Column &b, const Position &pivot_element)
 	for (int r = 1; r < size; ++r)
 	{
 		double factor = -(a[r][pivot_element.column]);
+		if (IsZero(factor))
+			continue;
 
 		for (int c = 0; c < size; ++c)
-			a[r][c] += pivot_row[c] * factor;
-		b[r] += b[0] * factor;
+		{
+			if (Equal(a[r][c], pivot_row[c] * factor))
+				a[r][c] = 0.0;
+			else
+				a[r][c] += pivot_row[c] * factor;
+		}
+
+		if (Equal(b[r], b[0] * factor))
+			b[r] = 0.0;
+		else
+			b[r] += b[0] * factor;
 	}
 }
 
@@ -217,7 +226,7 @@ Column SolveEquation(Equation &equation, bool &ok)
 		}
 	}
 
-	PrintSolution(std::cout, ok, b);
+	//PrintSolution(std::cout, ok, b);
 
 	return b;
 }
@@ -274,8 +283,13 @@ pair<int, vector<double>> SolveDietProblem(size_t n, size_t m, const Matrix &A, 
 	pair<int, vector<double>> ret = std::make_pair(-1, vector<double>(m, 0));
 
 	// for each subset solve the system of linear inequalities
+	int si = -1;
 	for (const auto s : subsets)
 	{
+		++si;
+		if (si == 36)
+			int stop = 1;
+
 		Matrix lhs;
 		Column rhs;
 		for (auto i : s)
@@ -284,7 +298,7 @@ pair<int, vector<double>> SolveDietProblem(size_t n, size_t m, const Matrix &A, 
 			rhs.push_back(b[i]);
 		}
 
-		PrintMatrix(std::cout, lhs, rhs);
+		//PrintMatrix(std::cout, lhs, rhs);
 
 		assert(lhs.size() == m);
 		assert(lhs[0].size() == m);
@@ -309,6 +323,15 @@ pair<int, vector<double>> SolveDietProblem(size_t n, size_t m, const Matrix &A, 
 			}
 
 			double right = b[r];
+			if (r == dim - 1)
+				int stop = 1;
+			if (left > 10.0e9 - 1)
+				int stop = 1;
+			//if (r == dim - 1 && left > 10.0e9 - 0.001)
+			//{
+			//	satisfies = false;
+			//	ret.first = 1;
+			//}
 			if (!LessOrEqual(left, right))
 			{
 				satisfies = false;
@@ -352,7 +375,7 @@ int my_main(std::istream &in, std::ostream &out)
 	// append further inequalities
 	AppendBounds(A, b, m);
 
-	PrintMatrix(std::cout, A, b);
+	//PrintMatrix(std::cout, A, b);
 
 	pair<int, vector<double>> ans = SolveDietProblem(n, m, A, b, c);
 
@@ -363,7 +386,7 @@ int my_main(std::istream &in, std::ostream &out)
 			break;
 		case 0:
 			out << "Bounded solution\n";
-			out << std::fixed << std::setprecision(15);
+			out << std::fixed << std::setprecision(18);
 			for (size_t i = 0; i < ans.second.size(); ++i)
 			{
 				if (i > 0)
@@ -383,18 +406,56 @@ int main()
 {
 	//my_main(std::cin, std::cout);
 
-	auto Test = [](string input, string expected)
+	auto Test = [](const std::string &input, const std::string &expected)
 		{
-		stringstream in(input);
-		stringstream out;
+		std::stringstream in(input);
+		std::stringstream out;
 		my_main(in, out);
-		string actual = out.str();
-		assert(actual == expected);
+		std::string actual = out.str();
+		//assert(actual == expected);
+		if (actual == expected)
+			std::cout << "Pass\n";
+		else
+		{
+			std::string bounded("Bounded solution\n");
+			if (actual.compare(0, bounded.length(), bounded) == 0 && expected.compare(0, bounded.length(), bounded) == 0)
+			{
+				auto GetValues = [](const std::string &s)
+				{
+					std::string str;
+					std::stringstream ss1(s);
+					std::getline(ss1, str);
+					std::getline(ss1, str);
+					std::stringstream ss2(str);
+					std::vector<double> vals;
+					double v;
+					while (ss2 >> v)
+						vals.push_back(v);
+					return vals;
+				};
+
+				std::vector<double> vals1 = GetValues(actual);
+				std::vector<double> vals2 = GetValues(expected);
+				size_t differences = std::inner_product(begin(vals1), end(vals1), begin(vals2), 0, std::plus<>(), [](double a, double b) { return Equal(a, b) ? 0 : 1; });
+				if (differences == 0)
+					std::cout << "Pass\n";
+				else
+					std::cout << "Fail\n";
+			}
+			else
+				std::cout << "Fail\n";
+		}
 		};
 
+	Test("3 2 -1 -1 1 0 0 1 -1 2 2 -1 2", "Bounded solution\n0.000000000000000000 2.000000000000000000\n");
+	Test("2 2 1 1 -1 1 10 -10 1 2", "Bounded solution\n10.000000000000000000 0.000000000000000000\n");
 	Test("2 2 1 1 -1 -1 1 -2 1 1", "No solution\n");
-	Test("3 2 -1 -1 1 0 0 1 -1 2 2 -1 2", "Bounded solution\n0.000000000000000 2.000000000000000\n");
 	Test("1 3 0 0 1 3 1 1 1", "Infinity\n");
+	Test("3 7 78 15 -76 -66 -27 33 -33 -22 78 -53 -17 -34 -32 20 -63 7 -77 -5 76 19 47 123584 -276905 134213 -85 -31 0 -71 -66 -86 -60", "Bounded solution\n0.000000000000000000 0.000000000000000000 5224.622641509434000000 0.000000000000000000 0.000000000000000000 0.000000000000000000 0.000000000000000000\n");
+	Test("2 3 13 54 47 -61 -45 2 4382 -5006 -97 -66 -55", "Bounded solution\n26.996677740863785000 74.648947951273527000 0.000000000000005225\n");
+	Test("3 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0", "Bounded solution\n0.000000000000000000 0.000000000000000000 0.000000000000000000\n");
+	Test("2 7 -60 -53 65 53 56 -2 -14 -42 11 -4 -47 -9 9 -54 424963 630662 -46 -16 4 12 -60 -50 0", "Infinity\n");
+	Test("1 1 -3 359642 0", "Bounded solution\n0.000000000000000\n");
 
 	return 0;
 }

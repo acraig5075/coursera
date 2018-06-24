@@ -13,13 +13,18 @@
 using std::vector;
 using std::pair;
 
-const double EPS = 1e-12;
+const double EPS = 1.0e-6;
+const double BIG = 10.0e9;
 
-#define IsZero(a) (fabs((a)) <= (EPS))
-#define NotZero(a) (fabs((a)) > (EPS))
-#define Equal(a,b) (fabs(a - b) <= (EPS + EPS * fabs(b)))
-#define LessOrEqual(a,b) ((a) <= ((b) + (EPS + EPS * fabs(b))))
-#define Greater(a,b) ((a) > ((b) + (EPS + EPS * fabs(b))))
+bool IsZero(double a)                { return fabs(a) <= EPS; }
+bool NotZero(double a)               { return fabs(a) > EPS; }
+//bool Equal(double a, double b)       { return fabs(a - b) <= (EPS + EPS * fabs(b)); }
+//bool LessOrEqual(double a, double b) { return a <= (b + (EPS + EPS * fabs(b))); }
+//bool GreaterThan(double a, double b)     { return a >  (b + (EPS + EPS * fabs(b))); }
+//bool Equal(double a, double b)       { return fabs(a - b) <= ((fabs(a) > fabs(b) ? fabs(b) : fabs(a)) * EPS); }
+bool Equal(double a, double b)       { return fabs(a - b) <= EPS; }
+bool GreaterThan(double a, double b) { return (a - b) > ((fabs(a) < fabs(b) ? fabs(b) : fabs(a)) * EPS); }
+bool LessThan(double a, double b)    { return (b - a) > ((fabs(a) < fabs(b) ? fabs(b) : fabs(a)) * EPS); }
 
 typedef std::vector<double> Column;
 typedef std::vector<double> Row;
@@ -81,7 +86,7 @@ void AppendBounds(Matrix &inequal, Column &amounts, size_t m)
 	// one inequality to distinguish between bounded and unbounded cases
 	Row row(m, 1.0);
 	inequal.push_back(row);
-	amounts.push_back(10.0e9);
+	amounts.push_back(BIG);
 }
 
 Position SelectPivotElement(
@@ -128,7 +133,11 @@ void RescalePivotRow(Matrix &a, Column &b, const Position &pivot_element)
 		else
 			a[pivot_element.row][i] /= constant;
 	}
-	b[pivot_element.row] /= constant;
+	
+	if (IsZero(b[pivot_element.row]))
+		b[pivot_element.row] = 0.0;
+	else
+		b[pivot_element.row] /= constant;
 }
 
 void SubtractLines(Matrix &a, Column &b, const Position &pivot_element)
@@ -149,12 +158,18 @@ void SubtractLines(Matrix &a, Column &b, const Position &pivot_element)
 				a[r][c] = 0.0;
 			else
 				a[r][c] += pivot_row[c] * factor;
+
+			if (IsZero(a[r][c]))
+				a[r][c] = 0.0;
 		}
 
 		if (Equal(b[r], b[0] * factor))
 			b[r] = 0.0;
 		else
 			b[r] += b[0] * factor;
+
+		if (IsZero(b[r]))
+			b[r] = 0.0;
 	}
 }
 
@@ -268,7 +283,6 @@ void PrintMatrix(std::ostream &out, Matrix &A, const Column &b)
 pair<int, vector<double>> SolveDietProblem(size_t n, size_t m, const Matrix &A, const Column &b, const Column &c)
 {
 	size_t dim = A.size();
-	assert(dim = n + m + 1);
 
 	// get all possible subsets of size m
 	std::vector<size_t> indexes(dim);
@@ -283,13 +297,8 @@ pair<int, vector<double>> SolveDietProblem(size_t n, size_t m, const Matrix &A, 
 	pair<int, vector<double>> ret = std::make_pair(-1, vector<double>(m, 0));
 
 	// for each subset solve the system of linear inequalities
-	int si = -1;
 	for (const auto s : subsets)
 	{
-		++si;
-		if (si == 36)
-			int stop = 1;
-
 		Matrix lhs;
 		Column rhs;
 		for (auto i : s)
@@ -323,16 +332,7 @@ pair<int, vector<double>> SolveDietProblem(size_t n, size_t m, const Matrix &A, 
 			}
 
 			double right = b[r];
-			if (r == dim - 1)
-				int stop = 1;
-			if (left > 10.0e9 - 1)
-				int stop = 1;
-			//if (r == dim - 1 && left > 10.0e9 - 0.001)
-			//{
-			//	satisfies = false;
-			//	ret.first = 1;
-			//}
-			if (!LessOrEqual(left, right))
+			if (GreaterThan(left, right))
 			{
 				satisfies = false;
 				if (r == dim - 1)
@@ -345,7 +345,7 @@ pair<int, vector<double>> SolveDietProblem(size_t n, size_t m, const Matrix &A, 
 		{
 			assert(soln.size() == c.size());
 			double pleasure = std::inner_product(begin(soln), end(soln), begin(c), 0.0);
-			if (Greater(pleasure, maxPleasure))
+			if (GreaterThan(pleasure, maxPleasure))
 			{
 				maxPleasure = pleasure;
 				ret.first = 0;
@@ -450,12 +450,12 @@ int main()
 	Test("3 2 -1 -1 1 0 0 1 -1 2 2 -1 2", "Bounded solution\n0.000000000000000000 2.000000000000000000\n");
 	Test("2 2 1 1 -1 1 10 -10 1 2", "Bounded solution\n10.000000000000000000 0.000000000000000000\n");
 	Test("2 2 1 1 -1 -1 1 -2 1 1", "No solution\n");
-	Test("1 3 0 0 1 3 1 1 1", "Infinity\n");
 	Test("3 7 78 15 -76 -66 -27 33 -33 -22 78 -53 -17 -34 -32 20 -63 7 -77 -5 76 19 47 123584 -276905 134213 -85 -31 0 -71 -66 -86 -60", "Bounded solution\n0.000000000000000000 0.000000000000000000 5224.622641509434000000 0.000000000000000000 0.000000000000000000 0.000000000000000000 0.000000000000000000\n");
 	Test("2 3 13 54 47 -61 -45 2 4382 -5006 -97 -66 -55", "Bounded solution\n26.996677740863785000 74.648947951273527000 0.000000000000005225\n");
 	Test("3 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0", "Bounded solution\n0.000000000000000000 0.000000000000000000 0.000000000000000000\n");
-	Test("2 7 -60 -53 65 53 56 -2 -14 -42 11 -4 -47 -9 9 -54 424963 630662 -46 -16 4 12 -60 -50 0", "Infinity\n");
 	Test("1 1 -3 359642 0", "Bounded solution\n0.000000000000000\n");
+	Test("1 3 0 0 1 3 1 1 1", "Infinity\n");
+	Test("2 7 -60 -53 65 53 56 -2 -14 -42 11 -4 -47 -9 9 -54 424963 630662 -46 -16 4 12 -60 -50 0", "Infinity\n");
 
 	return 0;
 }
